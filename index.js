@@ -31,6 +31,7 @@ fs.readFile('credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
   // Authorize a client with credentials, then call the Google Drive API.
   authorize(JSON.parse(content), listFiles);
+  authorize(JSON.parse(content), download);
 });
 
 /**
@@ -91,6 +92,7 @@ function listFiles(auth) {
   const drive = google.drive({version: 'v3', auth});
   drive.files.list({
     pageSize: 10,
+    q: "name contains 'acervo'",
     fields: 'nextPageToken, files(id, name)',
   }, (err, res) => {
     if (err) return console.log('The API returned an error: ' + err);
@@ -104,8 +106,31 @@ function listFiles(auth) {
       console.log('No files found.');
     }
   });
+  
 }
 // [END drive_quickstart]
+
+function download(auth){
+  const drive = google.drive({version: 'v3', auth});
+  var fileId = '1UqPxmrBJFWdmHcc6qAXwSrhPD-tqyugb';
+  var dest = fs.createWriteStream('./acervo_1556_1899.json');
+  console.log(drive.files.get);
+  drive.files.get({fileId: fileId, alt: 'media'}, {responseType: 'stream'},
+    function(err, res){
+        res.data
+        .on('end', () => {
+            console.log('Done');
+        })
+        .on('error', err => {
+            console.log('Error', err);
+        })
+        .pipe(dest);
+    }
+);
+
+}
+
+
 
 module.exports = {
   SCOPES,
