@@ -1,26 +1,12 @@
-/**
- * @license
- * Copyright Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 // [START drive_quickstart]
 const fs = require('fs');
 const readline = require('readline');
 const {google} = require('googleapis');
 
+
 // If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -30,8 +16,8 @@ const TOKEN_PATH = 'token.json';
 fs.readFile('credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
   // Authorize a client with credentials, then call the Google Drive API.
-  authorize(JSON.parse(content), listFiles);
-  authorize(JSON.parse(content), download);
+  //authorize(JSON.parse(content), listFiles);
+  authorize(JSON.parse(content), downloadFiles);
 });
 
 /**
@@ -108,31 +94,92 @@ function listFiles(auth) {
   });
   
 }
-// [END drive_quickstart]
 
-function download(auth){
-  const drive = google.drive({version: 'v3', auth});
-  var fileId = '1UqPxmrBJFWdmHcc6qAXwSrhPD-tqyugb';
-  var dest = fs.createWriteStream('./acervo_1556_1899.json');
-  console.log(drive.files.get);
-  drive.files.get({fileId: fileId, alt: 'media'}, {responseType: 'stream'},
-    function(err, res){
-        res.data
-        .on('end', () => {
-            console.log('Done');
-        })
-        .on('error', err => {
-            console.log('Error', err);
-        })
-        .pipe(dest);
+function download(auth, fileId, destName) {
+  const drive = google.drive({ version: 'v3', auth });
+  var dest = fs.createWriteStream(destName);
+  drive.files.get({
+    fileId: fileId,
+    alt: 'media'
+  }, {
+    responseType: 'stream'
+  }, (err, response) => {
+    if (err) {
+      console.log(err);
+      return;
     }
-);
-
+    response.data
+      .on('end', function () {
+        console.log('Done');
+      })
+      .on('error', function (err) {
+        console.log('Error during download', err);
+      })
+      .pipe(dest);
+  });
 }
 
+
+function downloadFiles(auth) {
+  if (!fs.existsSync('./acervo_1900_1979.json')){
+    download(auth, '1dqlyLNrC7c0BlCKQjtZ8X4WS8Qs2F4ZP', './acervo_1900_1979.json');
+  }
+  if(!fs.existsSync('./acervo_1980_1989.json')){
+    download(auth, '1Qiu2Gq4NBhQyMncE8HUqrCilb5kJK4Ng', './acervo_1980_1989.json');
+  }
+  if(!fs.existsSync('./acervo_1556_1899.json')){
+    download(auth, '1UqPxmrBJFWdmHcc6qAXwSrhPD-tqyugb', './acervo_1556_1899.json');
+  }
+ 
+  readJSON();
+}
+
+function readJSON(){
+  convertCSV('./acervo_1556_1899.json', './acervo_1556_1899.csv');
+  convertCSV('./acervo_1980_1989.json', './acervo_1980_1989.csv');
+  convertCSV('./acervo_1900_1979.json', './acervo_1900_1979.csv');
+  convertCSV300('./acervo_1900_1979.json', './acervo_1900_1979_300.csv');
+  convertCSV300('./acervo_1556_1899.json', './acervo_1556_1899_300.csv');
+  convertCSV300('./acervo_1980_1989.json', './acervo_1980_1989_300.csv');
+}
+
+function convertCSV300(arqName, destName){
+  const registros = JSON.parse(fs.readFileSync(arqName));
+  let csv = '';
+
+  csv = Object.keys(registros._default['1']).join('|');
+  csv += '\n';
+
+  for (const pos of Object.keys(registros._default)) {
+      csv += Object.values(registros._default[pos]).join('|') + '\n';
+      if(pos == '300'){
+        break
+      }
+  }
+
+  fs.writeFileSync(destName, csv);
+
+  console.log('concluido');
+}
+
+function convertCSV(arqName, destName){
+  const registros = JSON.parse(fs.readFileSync(arqName));
+  let csv = '';
+
+  csv = Object.keys(registros._default['1']).join('|');
+  csv += '\n';
+
+  for (const pos of Object.keys(registros._default)) {
+      csv += Object.values(registros._default[pos]).join('|') + '\n';
+  }
+
+  fs.writeFileSync(destName, csv);
+
+  console.log('concluido');
+}
 
 
 module.exports = {
   SCOPES,
-  listFiles,
+  listFiles
 };
